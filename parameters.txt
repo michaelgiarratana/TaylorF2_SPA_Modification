@@ -6,7 +6,7 @@ S1z: 0.5
 S2x: 0
 S2y: 0 
 S2z: 0.5
-distance: 50 * 1e6 * lal.PC_SI 
+distance: 400 * 1e6 * lal.PC_SI 
 inclination: 0
 phiRef: 0
 longAscNodes: 0

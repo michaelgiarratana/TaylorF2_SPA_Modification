@@ -73,7 +73,7 @@ if(not os.path.exists(outdir)):
 file_to_det={'H1':"aligo",'L1':'aligo','V1':'avirgo','K1':'kagra'}
 duration = 0
 
-duration = 512
+duration = 16
 
 def lambda_from_piecewise(p,m):
     EOS=lalsim.SimNeutronStarEOS4ParameterPiecewisePolytrope(p[0],p[1],p[2],p[3])
@@ -128,7 +128,8 @@ bilby.core.utils.setup_logger(outdir=outdir, label=label)
 
 minimum_frequency = 20
 reference_frequency = 100
-sampling_frequency = 4096.
+#sampling_frequency = 4096.
+sampling_frequency = 16384.
 
 data_H = TimeSeries.read("/home/giarratana/TaylorF2_SPA_Modification/X-Test400_H1-1197008864-16.gwf", channel="Test400-H1")
 data_L = TimeSeries.read("/home/giarratana/TaylorF2_SPA_Modification/X-Test400_L1-1197008864-16.gwf", channel="Test400-L1")
@@ -180,7 +181,8 @@ else:
     raise
 #for interferometer in interferometers:
 #    interferometer.minimum_frequency = minimum_frequency
-#interferometers.set_strain_data_from_zero_noise(sampling_frequency, duration, start_time=ifo.start_time - duration + 2.)
+
+interferometers.set_strain_data_from_zero_noise(sampling_frequency, duration, start_time=ifo.start_time - duration + 2.)
 
 #interferometers.inject_signal(
 #    parameters=injection_parameters,
@@ -231,7 +233,6 @@ likelihood = bilby.gw.likelihood.ROQGravitationalWaveTransient(
     linear_matrix="/home/michael/projects/eos/GWXtreme_Tasks/year2/bilby_runs/simulations/roq/usedfor_uniformP_LTs/basis.hdf5", quadratic_matrix="/home/michael/projects/eos/GWXtreme_Tasks/year2/bilby_runs/simulations/roq/usedfor_uniformP_LTs/basis.hdf5", roq_params=roq_params,
     distance_marginalization=True, phase_marginalization=True
 )
-main_PE_FromFrames
 # sampling
 npool = 50
 nact = 10
