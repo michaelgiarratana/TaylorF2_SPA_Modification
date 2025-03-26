@@ -157,13 +157,11 @@ if obr is None:
     obr='O4'
 
 if obr=='O4':
-    interferometers =bilby.gw.detector.InterferometerList(['H1', 'L1'])
+    interferometers = bilby.gw.detector.InterferometerList(['H1', 'L1'])
+    for ifo, data in itertools.zip_longest(interferometers, all_data):
+        ifo.strain_data.set_from_gwpy_timeseries(data)
 
-    for ifo in interferometers:
-        for fn in psd_files:
-            if file_to_det[ifo.name] in fn:
-                print(ifo.name,fn)
-                ifo.power_spectral_density = bilby.gw.detector.PowerSpectralDensity(asd_file=fn)
+
 elif obr=='O3':
     interferometers = bilby.gw.detector.InterferometerList(['H1', 'L1'])
     for ifo, data in itertools.zip_longest(interferometers, all_data):
