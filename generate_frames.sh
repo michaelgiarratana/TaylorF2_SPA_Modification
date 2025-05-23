@@ -1,14 +1,31 @@
 #!/bin/bash
-
 python3 generate_signal.py \
-	--config parameters.txt \
-	--psd_file lalsim.SimNoisePSDaLIGOZeroDetHighPowerGWINC \
-	--outputfile outputfile.gwf \
-	--channel Test400-L1 \
-	--det L1 \
-	--eventT 1197008880 \
-	--ra 0 \
-	--dec 0 \
-	--psi 0 \
-	--srate 16384 \
-	--pad 8
+    --mass1 12.0 \
+    --mass2 8.0 \
+    --S1x 0.0 \
+    --S1y 0.0 \
+    --S1z 0.2 \
+    --S2x 0.0 \
+    --S2y 0.0 \
+    --S2z 0.9 \
+    --distance 100.0 \
+    --inclination 0.0 \
+    --phi_ref 0.0 \
+    --longAscNodes 0.0 \
+    --eccentricity 0.0 \
+    --meanPerAno 0.0 \
+    --deltaT 0.00006103515625 \
+    --f_min 15.0 \
+    --f_ref 0.0 \
+    --LALparams 'lal.CreateDict()' \
+    --approximant TaylorF2 \
+    --psd_file lalsim.SimNoisePSDaLIGOZeroDetHighPowerGWINC \
+    --outputfile outputfile.gwf \
+    --channel BBH2_H1 \
+    --det H1 \
+    --eventT 1197008880 \
+    --ra 0.0 \
+    --dec 0.0 \
+    --psi 0.0 \
+    --srate 16384 \
+    --pad 8.0

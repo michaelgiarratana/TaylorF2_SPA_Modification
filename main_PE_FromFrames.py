@@ -126,13 +126,13 @@ print(bilby.gw.conversion.lambda_1_lambda_2_to_lambda_tilde(l1,l2,m1,m2))
 label = 'bns_example'
 bilby.core.utils.setup_logger(outdir=outdir, label=label)
 
-minimum_frequency = 20
-reference_frequency = 100
-#sampling_frequency = 4096.
-sampling_frequency = 16384.
+minimum_frequency = 15
+reference_frequency = 0
+sampling_frequency = 4096.
+#sampling_frequency = 16384.
 
-data_H = TimeSeries.read("/home/giarratana/TaylorF2_SPA_Modification/X-Test400_H1-1197008864-16.gwf", channel="Test400-H1")
-data_L = TimeSeries.read("/home/giarratana/TaylorF2_SPA_Modification/X-Test400_L1-1197008864-16.gwf", channel="Test400-L1")
+data_H = TimeSeries.read("/home/giarratana/TaylorF2_SPA_Modification/X-TestResample_H1-1197008864-16.gwf", channel="TestResample_H1")
+data_L = TimeSeries.read("/home/giarratana/TaylorF2_SPA_Modification/X-TestResample_L1-1197008864-16.gwf", channel="TestResample_L1")
 
 all_data = [data_H, data_L]
 
@@ -223,7 +223,7 @@ search_waveform_generator = bilby.gw.waveform_generator.WaveformGenerator(
     )
 )
 roq_params = np.array(
-    [(minimum_frequency, sampling_frequency / 2, duration, 0.8, 1.9, 0)],
+        [(minimum_frequency, sampling_frequency / 2, duration, 0.8, 1.9, 0)],
     dtype=[("flow", float), ("fhigh", float), ("seglen", float), ("chirpmassmin", float), ("chirpmassmax", float), ("compmin", float)]
 )
 likelihood = bilby.gw.likelihood.ROQGravitationalWaveTransient(
