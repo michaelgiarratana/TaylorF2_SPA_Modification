@@ -87,8 +87,7 @@ t0 = int(h.epoch - pad)
 #seglen = math.ceil(h.deltaT * h.data.length + 2*pad) # Computes the event duration in seconds (w/ a buffer)
 
 # Below is the procedure for injecting noise from a psd onto the hp, hc data
-segdur = 48.0 # segment duration
-srate *= 1
+segdur = np.ceil(len(h.data.data)/srate)*2 # segment duration
 seglen = int(segdur * srate)
 stride = seglen // 2  # stride between segments
 
