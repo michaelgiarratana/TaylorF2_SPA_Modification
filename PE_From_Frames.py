@@ -21,20 +21,27 @@ parser.add_argument("--s2", type=float, required=True, help="secondary spin magn
 parser.add_argument("--distance", type=float, required=True, help="Luminosity distance (in Mpc).")
 parser.add_argument("--inclination", type=float, required=True, help="Injected inclination")
 parser.add_argument("--eventT", type=float, required=True, help="Event time.")
+parser.add_argument("--f_min", type=float, required=True, help="Starting frequency for waveform generation (Hz).")
+parser.add_argument("--f_max", type=float, required=True, help="Ending frequency for waveform generation (Hz).")
+parser.add_argument("--f_ref", type=float, required=True, help="Reference GW frequency (Hz).")
 parser.add_argument("--H_path", type=str, required=True, help="Path to H1 data.")
 parser.add_argument("--L_path", type=str, required=True, help="Path to L1 data.")
 parser.add_argument("--H_channel", type=str, required=True, help="Channel name for H1 data.")
 parser.add_argument("--L_channel", type=str, required=True, help="Channel name for L1 data.")
 parser.add_argument("--out_dir", type=str, required=True, help="Directory to hold output files.")
 parser.add_argument("--run_label", type=str, required=True, help="Label for output files.")
-parser.add_argument("--source", type=str, required=True, help="Type of binary (BBH, BNS, BHNS)")
+parser.add_argument("--source_type", type=str, required=True, help="Type of binary (BBH, BNS, BHNS)")
+
+
 args = parser.parse_args()  # Parse the arguments
 
 # Derive other parameters from the input args
 m1 = args.mass1
 m2 = args.mass2
+q = m2/m1
 M = m1+m2
 eta = (m1*m2)/(M**2)
+mc = ((m1*m2)**(3/5))/((m1+m2)**(1/5))
 a1 = args.s1
 a2 = args.s2
 dL = args.distance
@@ -54,6 +61,7 @@ injection_parameters = dict(
     mass_1 = m1, # Msol
     mass_2 = m2,
     total_mass = M,
+    mass_ratio = q,
     symmetric_mass_ratio = eta,
     a_1 = a1,
     a_2 = a2,
@@ -63,17 +71,37 @@ injection_parameters = dict(
     phi_jl=0, # Angle b/w the total angular momentum of the binary and the orbital angular momentum
     luminosity_distance = dL, # Mpc
     theta_jn = args.inclination,# Inclination angle b/w the line of sight and the orbital angular momentum of the binary, in radians
-    phase=0, # The phase of the gravitational wave at the reference frequency
+    phase=1.570796327, # <--pi/2 The phase of the gravitational wave at the reference frequency
     ra=0, # The celestial coordinate defining the source's location on the sky, measured in radians
     dec=0, # The celestial coordinate defining the source's location on the sky, measured in radians
     geocent_time = args.eventT, #The GPS time at which the gravitational wave passes through the center of the Earth
     psi=0,# The polarization angle of the gravitational wave, describing the orientation of the wave’s polarization ellipse in the sky
 )
 
+if args.source_type == 'BNS':
+    # Replace a_1, a_2 with chi_1, chi_2
+    injection_parameters['chi_1'] = injection_parameters.pop('a_1')
+    injection_parameters['chi_2'] = injection_parameters.pop('a_2')
+
+    # Add tidal deformabilities
+    injection_parameters['lambda_1'] = 0  # Replace with actual value if needed
+    injection_parameters['lambda_2'] = 0
+
+    # Remove mass and angular parameters
+    for key in ['mass_1', 'mass_2', 'total_mass', 'symmetric_mass_ratio',#'mass_ratio,
+                'tilt_1', 'tilt_2', 'phi_12', 'phi_jl']:
+        injection_parameters.pop(key, None)
+
+    # Add chirp mass and mass ratio if sampling over them
+    injection_parameters['chirp_mass'] = mc
+    injection_parameters['mass_ratio'] = q
+
 # specify waveform arguments
 waveform_arguments = dict(
-    waveform_approximant="TaylorF2",  # waveform approximant name
-    reference_frequency=0.0,  # Reference GW frequency (Hz). If 0Hz, reference point is coalescence
+    waveform_approximant='TaylorF2',  # waveform approximant name
+    reference_frequency = args.f_ref,  # Reference GW frequency (Hz). If 0Hz, reference point is coalescence
+    minimum_frequency = args.f_min, # Minimul frequency of the generated waveform
+    maximum_frequency = args.f_max, # Spin-corrected ISCO frequency
 )
 
 # Map string identifiers to the actual source models
@@ -136,12 +164,17 @@ if source == "BBH":
     # Replace fixed component masses with total_mass and eta
     priors.pop("mass_1")
     priors.pop("mass_2")
-
-    priors['total_mass'] = bilby.core.prior.Uniform(name='total_mass', minimum=M * 0.5, maximum=M * 1.5)
-    priors['symmetric_mass_ratio'] = bilby.core.prior.Uniform(name='symmetric_mass_ratio', minimum=0.1, maximum=0.25)
-    priors['luminosity_distance'] = bilby.core.prior.PowerLaw(alpha=2, name='luminosity_distance',
-                                                               minimum=dL * 0.5, maximum=dL * 1.5,
-                                                               unit='Mpc', latex_label='$d_L$')
+    #priors['geocent_time'] = bilby.core.prior.Uniform(name='geocent_time', minimum=injection_parameters['geocent_time'] - 1, maximum=injection_parameters['geocent_time'] + 1)
+    #priors['phase'] = bilby.core.prior.Uniform(name='phase', minimum=0, maximum=2*np.pi)
+    #priors['total_mass'] = bilby.core.prior.Uniform(name='total_mass', minimum=M * 0.5, maximum=M * 1.5)
+    #priors['symmetric_mass_ratio'] = bilby.core.prior.Uniform(name='symmetric_mass_ratio', minimum=0.1, maximum=0.25)
+    #priors['luminosity_distance'] = bilby.core.prior.PowerLaw(alpha=2, name='luminosity_distance',
+    #                                                           minimum=dL * 0.5, maximum=dL * 1.5,
+    #                                                           unit='Mpc', latex_label='$d_L$')
+    priors.pop("total_mass")
+    priors.pop("symmetric_mass_ratio")
+    priors['chirp_mass'] = bilby.core.prior.Uniform(mc * 0.95, mc * 1.05, "chirp_mass")
+    priors['mass_ratio'] = bilby.core.prior.Uniform(0.125, 1, "mass_ratio")
     priors['a_1'] = bilby.core.prior.Uniform(0, 0.99, 'a_1')
     priors['a_2'] = bilby.core.prior.Uniform(0, 0.99, 'a_2')
 
@@ -150,10 +183,10 @@ elif source == "BNS":
     # Set up all priors to be equal to a delta function at their values designated in the injection parameters
     priors = bilby.gw.prior.BNSPriorDict(injection_parameters.copy())
 
-    # Replace fixed component masses with chirp mass and eta
-    priors.pop("mass_1")
-    priors.pop("mass_2")
-
+    priors['geocent_time'] = bilby.core.prior.Uniform(name='geocent_time', minimum=injection_parameters['geocent_time'] - 1, maximum=injection_parameters['geocent_time'] + 1)
+    priors['phase'] = bilby.core.prior.Uniform(name='phase', minimum=0, maximum=2*np.pi)
+    #priors['total_mass'] = bilby.core.prior.Uniform(name='total_mass', minimum=M * 0.5, maximum=M * 1.5)    
+    #priors['symmetric_mass_ratio'] = bilby.core.prior.Uniform(name='symmetric_mass_ratio', minimum=0.1, maximum=0.25)
     priors["chirp_mass"] = bilby.core.prior.Uniform(mc * 0.95, mc * 1.05, "chirp_mass")
     priors["mass_ratio"] = bilby.core.prior.Uniform(0.125, 1, "mass_ratio")
     priors['chi_1'] = bilby.core.prior.Uniform(-0.05, 0.05, 'chi_1')
@@ -181,16 +214,47 @@ likelihood = bilby.gw.likelihood.GravitationalWaveTransient(
     interferometers=interferometers, waveform_generator=waveform_generator
 )
 
+# Defining custom conversion functions with custom waveform defaults
+from bilby.gw.conversion import _generate_all_cbc_parameters, convert_to_lal_binary_black_hole_parameters, convert_to_lal_binary_neutron_star_parameters, generate_tidal_parameters
+def generate_all_bbh_parameters_custom(sample, likelihood = None, priors = None, npool = 1):
+    waveform_defaults = {
+            'reference_frequency': args.f_ref, 'waveform_approximant': 'TaylorF2',
+            'minimum_frequency': args.f_min}
+    output_sample = _generate_all_cbc_parameters(
+            sample, defaults = waveform_defaults,
+            base_conversion = convert_to_lal_binary_black_hole_parameters,
+            likelihood = likelihood, priors = priors, npool = npool)
+    return output_sample
+
+def generate_all_bns_parameters_custom(sample, likelihood = None, priors = None, npool = 1):
+    waveform_defaults ={
+            'reference_frequency': args.f_ref, 'waveform_approximant': 'TaylorF2',
+            'minimum_frequency': args.f_min}
+    output_sample = _generate_all_cbc_parameters(
+            sample, defaults = waveform_defaults,
+            base_conversion = convert_to_lal_binary_neutron_star_parameters,
+            likelihood = likelihood, priors = priors, npool = npool)
+    try:
+        output_sample = generate_tidal_parameters(output_sample)
+    except KeyError as e:
+        logger.debug(
+                "Generation of tidal parameters failed with message {}".format(e))
+        return output_sample
+
 # Map source types to their corresponding conversion functions
+#conversion_function_map = {
+#    "BBH": bilby.gw.conversion.generate_all_bbh_parameters,
+#    "BNS": bilby.gw.conversion.generate_all_bns_parameters,
+#    "BHNS": bilby.gw.conversion.generate_all_bns_parameters,
+#}
 conversion_function_map = {
-    "BBH": bilby.gw.conversion.generate_all_bbh_parameters,
-    "BNS": bilby.gw.conversion.generate_all_bns_parameters,
-    "BHNS": bilby.gw.conversion.generate_all_bns_parameters,
-}
+        "BBH": generate_all_bbh_parameters_custom,
+        "BNS": generate_all_bns_parameters_custom,
+        "BHNS": generate_all_bns_parameters_custom,
+        }
 
 # Select the appropriate conversion function based on the source
 conversion_function = conversion_function_map.get(args.source_type.upper())
-
 
 result = bilby.core.sampler.run_sampler(
     likelihood=likelihood,
@@ -199,7 +263,7 @@ result = bilby.core.sampler.run_sampler(
     npoints=2000,
     walks = 100,
     maxmcmc = 5000,
-    npool = 50,
+    npool = 100,
     nact=10,
     injection_parameters=injection_parameters,
     outdir=outdir,
