@@ -107,7 +107,7 @@ waveform_arguments = dict(
 # Map string identifiers to the actual source models
 source_model_map = {
     "BBH": bilby.gw.source.lal_binary_black_hole,
-    "BNS": bilby.gw.source.lal_binary_neutron_star,
+    "BNS": bilby.gw.source.binary_neutron_star_roq,
     "BHNS": bilby.gw.source.lal_binary_neutron_star 
 }
 
@@ -168,6 +168,7 @@ if source == "BBH":
     #priors['phase'] = bilby.core.prior.Uniform(name='phase', minimum=0, maximum=2*np.pi)
     #priors['total_mass'] = bilby.core.prior.Uniform(name='total_mass', minimum=M * 0.5, maximum=M * 1.5)
     #priors['symmetric_mass_ratio'] = bilby.core.prior.Uniform(name='symmetric_mass_ratio', minimum=0.1, maximum=0.25)
+
     #priors['luminosity_distance'] = bilby.core.prior.PowerLaw(alpha=2, name='luminosity_distance',
     #                                                           minimum=dL * 0.5, maximum=dL * 1.5,
     #                                                           unit='Mpc', latex_label='$d_L$')
@@ -182,15 +183,15 @@ elif source == "BNS":
     # Neutron Star Binary prior setup
     # Set up all priors to be equal to a delta function at their values designated in the injection parameters
     priors = bilby.gw.prior.BNSPriorDict(injection_parameters.copy())
-
+    
     priors['geocent_time'] = bilby.core.prior.Uniform(name='geocent_time', minimum=injection_parameters['geocent_time'] - 1, maximum=injection_parameters['geocent_time'] + 1)
     priors['phase'] = bilby.core.prior.Uniform(name='phase', minimum=0, maximum=2*np.pi)
     #priors['total_mass'] = bilby.core.prior.Uniform(name='total_mass', minimum=M * 0.5, maximum=M * 1.5)    
     #priors['symmetric_mass_ratio'] = bilby.core.prior.Uniform(name='symmetric_mass_ratio', minimum=0.1, maximum=0.25)
-    priors["chirp_mass"] = bilby.core.prior.Uniform(mc * 0.95, mc * 1.05, "chirp_mass")
+    priors["chirp_mass"] = bilby.core.prior.Uniform(0.9, 1.8, "chirp_mass")
     priors["mass_ratio"] = bilby.core.prior.Uniform(0.125, 1, "mass_ratio")
-    priors['chi_1'] = bilby.core.prior.Uniform(-0.05, 0.05, 'chi_1')
-    priors['chi_2'] = bilby.core.prior.Uniform(-0.05, 0.05, 'chi_2')
+    #priors['chi_1'] = bilby.core.prior.Uniform(-0.05, 0.05, 'chi_1')
+    #priors['chi_2'] = bilby.core.prior.Uniform(-0.05, 0.05, 'chi_2')
 
 elif source == "BHNS":
     # Black Hole/Neutron Star binary prior setup (currently same as BNS)
@@ -209,10 +210,32 @@ elif source == "BHNS":
 else:
     raise ValueError(f"Unknown source type '{args.source_type}'. Please choose from 'BBH', 'BNS', or 'BHNS'.")
 
-# Compute the likelihoods
-likelihood = bilby.gw.likelihood.GravitationalWaveTransient(
-    interferometers=interferometers, waveform_generator=waveform_generator
-)
+# Compute the appropriate likelihoods based on the source type
+if args.source_type.upper() == "BBH":
+    # Standard likelihood for BBH
+    likelihood = bilby.gw.likelihood.GravitationalWaveTransient(
+        interferometers=interferometers,
+        waveform_generator=waveform_generator
+    )
+elif args.source_type.upper() in ["BNS", "NSBH"]:
+    # ROQ params for BNS likelihood
+    roq_params = np.array(
+    [(args.f_min, sampling_frequency / 2, duration, 0.8, 1.9, 0)],
+    dtype=[("flow", float), ("fhigh", float), ("seglen", float), ("chirpmassmin", float), ("chirpmassmax", float), ("compmin", float)]
+    )
+    # ROQ likelihood for BNS/NSBH
+    likelihood = bilby.gw.likelihood.ROQGravitationalWaveTransient(
+        interferometers=interferometers,
+        waveform_generator=waveform_generator,
+        priors=priors,
+        linear_matrix="/home/michael/projects/eos/GWXtreme_Tasks/year2/bilby_runs/simulations/roq/usedfor_uniformP_LTs/basis.hdf5",
+        quadratic_matrix="/home/michael/projects/eos/GWXtreme_Tasks/year2/bilby_runs/simulations/roq/usedfor_uniformP_LTs/basis.hdf5",
+        roq_params=roq_params,
+        distance_marginalization=False,
+        phase_marginalization=True
+    )
+else:
+    raise ValueError(f"Unknown source type: {args.source_type}")
 
 # Defining custom conversion functions with custom waveform defaults
 from bilby.gw.conversion import _generate_all_cbc_parameters, convert_to_lal_binary_black_hole_parameters, convert_to_lal_binary_neutron_star_parameters, generate_tidal_parameters
