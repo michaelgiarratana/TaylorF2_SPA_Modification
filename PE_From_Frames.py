@@ -135,7 +135,7 @@ for ifo, data in itertools.zip_longest(interferometers, all_data):
 psd = lal.CreateREAL8FrequencySeries(
     name = 'psd',
     epoch = 0,
-    f0 = 15,
+    f0 = args.f_min,
     deltaF = 1.0 / duration,
     sampleUnits = lal.SecondUnit,
     length = int(duration * sampling_frequency) // 2 + 1
@@ -143,7 +143,7 @@ psd = lal.CreateREAL8FrequencySeries(
 
 # Create a frequency array from f_min (f0) to f_final - the nyquist frequency 
 freqs = psd.f0 + np.arange(psd.data.length) * psd.deltaF
-lalsim.SimNoisePSDaLIGOZeroDetHighPowerGWINC(psd, 15) # 15 is f_min in gwf construction
+lalsim.SimNoisePSDaLIGOZeroDetHighPowerGWINC(psd, args.f_min) # 15 is f_min in gwf construction
 
 # Wrap into Bilby's PowerSpectralDensity format and assign to each interferometer
 for ifo in interferometers:
@@ -164,27 +164,28 @@ if source == "BBH":
     # Replace fixed component masses with total_mass and eta
     priors.pop("mass_1")
     priors.pop("mass_2")
-    #priors['geocent_time'] = bilby.core.prior.Uniform(name='geocent_time', minimum=injection_parameters['geocent_time'] - 1, maximum=injection_parameters['geocent_time'] + 1)
-    #priors['phase'] = bilby.core.prior.Uniform(name='phase', minimum=0, maximum=2*np.pi)
-    #priors['total_mass'] = bilby.core.prior.Uniform(name='total_mass', minimum=M * 0.5, maximum=M * 1.5)
-    #priors['symmetric_mass_ratio'] = bilby.core.prior.Uniform(name='symmetric_mass_ratio', minimum=0.1, maximum=0.25)
+    priors.pop("mass_ratio")
+    priors['geocent_time'] = bilby.core.prior.Uniform(name='geocent_time', minimum=injection_parameters['geocent_time'] - 0.5, maximum=injection_parameters['geocent_time'] + 0.5)
+    priors['phase'] = bilby.core.prior.Uniform(name='phase', minimum=0, maximum=2*np.pi)
+    priors['total_mass'] = bilby.core.prior.Uniform(name='total_mass', minimum=10, maximum=50)
+    priors['symmetric_mass_ratio'] = bilby.core.prior.Uniform(name='symmetric_mass_ratio', minimum=0.1, maximum=0.25)
 
     #priors['luminosity_distance'] = bilby.core.prior.PowerLaw(alpha=2, name='luminosity_distance',
     #                                                           minimum=dL * 0.5, maximum=dL * 1.5,
     #                                                           unit='Mpc', latex_label='$d_L$')
-    priors.pop("total_mass")
-    priors.pop("symmetric_mass_ratio")
-    priors['chirp_mass'] = bilby.core.prior.Uniform(mc * 0.95, mc * 1.05, "chirp_mass")
-    priors['mass_ratio'] = bilby.core.prior.Uniform(0.125, 1, "mass_ratio")
-    priors['a_1'] = bilby.core.prior.Uniform(0, 0.99, 'a_1')
-    priors['a_2'] = bilby.core.prior.Uniform(0, 0.99, 'a_2')
+    #priors.pop("total_mass")
+    #priors.pop("symmetric_mass_ratio")
+    #priors['chirp_mass'] = bilby.core.prior.Uniform(4, 130, "chirp_mass")
+    #priors['mass_ratio'] = bilby.core.prior.Uniform(0.125, 1, "mass_ratio")
+    #priors['a_1'] = bilby.core.prior.Uniform(0, 0.99, 'a_1')
+    #priors['a_2'] = bilby.core.prior.Uniform(0, 0.99, 'a_2')
 
 elif source == "BNS":
     # Neutron Star Binary prior setup
     # Set up all priors to be equal to a delta function at their values designated in the injection parameters
     priors = bilby.gw.prior.BNSPriorDict(injection_parameters.copy())
     
-    priors['geocent_time'] = bilby.core.prior.Uniform(name='geocent_time', minimum=injection_parameters['geocent_time'] - 1, maximum=injection_parameters['geocent_time'] + 1)
+    priors['geocent_time'] = bilby.core.prior.Uniform(name='geocent_time', minimum=injection_parameters['geocent_time'] - 0.5, maximum=injection_parameters['geocent_time'] + 0.5)
     priors['phase'] = bilby.core.prior.Uniform(name='phase', minimum=0, maximum=2*np.pi)
     #priors['total_mass'] = bilby.core.prior.Uniform(name='total_mass', minimum=M * 0.5, maximum=M * 1.5)    
     #priors['symmetric_mass_ratio'] = bilby.core.prior.Uniform(name='symmetric_mass_ratio', minimum=0.1, maximum=0.25)
@@ -232,7 +233,7 @@ elif args.source_type.upper() in ["BNS", "NSBH"]:
         quadratic_matrix="/home/michael/projects/eos/GWXtreme_Tasks/year2/bilby_runs/simulations/roq/usedfor_uniformP_LTs/basis.hdf5",
         roq_params=roq_params,
         distance_marginalization=False,
-        phase_marginalization=True
+        phase_marginalization=False
     )
 else:
     raise ValueError(f"Unknown source type: {args.source_type}")
