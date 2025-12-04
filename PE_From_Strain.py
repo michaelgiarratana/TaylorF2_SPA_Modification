@@ -12,7 +12,7 @@ from gwpy.timeseries import TimeSeries
 from lalframe import FrWriteREAL8TimeSeries
 import pickle
 import argparse
-
+import random
 
 # Argument parsing setup
 parser = argparse.ArgumentParser(description="Process parameter configuration file.")
@@ -35,6 +35,7 @@ parser.add_argument("--detector", type=str, required=True, help="GW detector use
 parser.add_argument("--strain_path", type=str, required=True, help="Path to strain pickle file.")
 parser.add_argument("--duration", type=float, required=True, help="Duration of data segment that we're injecting into.")
 parser.add_argument("--begin", type=float, required=True, help="Signal start time.")
+parser.add_argument("--seed", type=int, required=True, help="Random seed for reproducibility")
 
 args = parser.parse_args()  # Parse the arguments
 
@@ -45,12 +46,28 @@ duration = args.duration
 sampling_frequency = 4096.0
 
 # Specify the output directory and the name of the simulation.
-outdir = "/home/giarratana/TaylorF2_SPA_Modification/july_results/"
+outdir = "/home/giarratana/TaylorF2_SPA_Modification/multi_run_results2/"
 label = args.run_label
 #bilby.core.utils.setup_logger(outdir=outdir, label=label)
 
 # Set up a random seed for result reproducibility
-bilby.core.utils.random.seed(88170235)
+#bilby.core.utils.random.seed(88170235)
+
+# Cycle through list of specified random seeds
+bilby.core.utils.random.seed(args.seed)
+print(f"Using seed: {args.seed}")
+
+#if args.seed == "random":
+#    SEED = random.randint(1, 10**8)
+#    bilby.core.utils.random.seed(SEED)
+#    print(f"Using randomly generated seed: {SEED}")
+
+#elif args.seed == "fix":
+#    SEED = 88170235
+#    bilby.core.utils.random.seed(SEED)
+#    print(f"Using fixed seed: {SEED}")
+
+#else: raise ValueError(f"Unknown seed type (enter 'random' or 'fix'): {SEED}")
 
 # Pulling injection parameters from parser
 m1 = args.mass1
@@ -81,6 +98,7 @@ injection_parameters = dict(
     luminosity_distance = dL,
     theta_jn=0.0,
     psi=0,
+    #eccentricity=0.3, # KEEP ONLY DURING ECC BIAS TEST
     phase = args.phi_ref,
     geocent_time = args.eventT,
     ra=0,
@@ -203,12 +221,12 @@ if source == 'BBH':
     #priors['mass_1'] = bilby.core.prior.Uniform(name='mass_1', minimum=15, maximum=45)
     #priors['mass_2'] = bilby.core.prior.Uniform(name='mass_2', minimum=15, maximum=45)
     
-    #priors.pop("mass_1")
-    #priors.pop("mass_2")
-    #priors.pop("symmetric_mass_ratio")
-    #priors.pop("total_mass")
-    #priors['chirp_mass'] = bilby.core.prior.Uniform(name='chirp_mass', minimum=mc*0.95, maximum=mc*1.05)
-    #priors['mass_ratio'] = bilby.core.prior.Uniform(name='mass_ratio', minimum=0.01, maximum=1)
+    priors.pop("mass_1")
+    priors.pop("mass_2")
+    priors.pop("symmetric_mass_ratio")
+    priors.pop("total_mass")
+    priors['chirp_mass'] = bilby.core.prior.Uniform(name='chirp_mass', minimum=mc*0.95, maximum=mc*1.05)
+    priors['mass_ratio'] = bilby.core.prior.Uniform(name='mass_ratio', minimum=0.01, maximum=1)
     
     priors.pop('luminosity_distance')
     priors['luminosity_distance'] = bilby.core.prior.PowerLaw(alpha=2, name='luminosity_distance',minimum=dL*0.25, maximum=dL*1.75, unit='Mpc', latex_label='$d_L$')
@@ -220,17 +238,18 @@ if source == 'BBH':
     #priors['total_mass'] = bilby.core.prior.Uniform(name='total_mass', minimum=0.95*M, maximum=1.05*M)
     #priors['symmetric_mass_ratio'] = bilby.core.prior.Uniform(name='symmetric_mass_ratio', minimum=0.1, maximum=0.25)
     
-    priors.pop('chirp_mass')
-    priors.pop('mass_ratio')
-    priors.pop('total_mass')
-    priors.pop('symmetric_mass_ratio')
-    priors['mass_1'] = bilby.core.prior.Uniform(name='mass_1', minimum=m1*0.75, maximum=m1*1.25)
-    priors['mass_2'] = bilby.core.prior.Uniform(name='mass_2', minimum=m2*0.75, maximum=m2*1.25)
+    #priors.pop('chirp_mass')
+    #priors.pop('mass_ratio')
+    #priors.pop('total_mass')
+    #priors.pop('symmetric_mass_ratio')
+    #priors['mass_1'] = bilby.core.prior.Uniform(name='mass_1', minimum=m1*0.75, maximum=m1*1.25)
+    #priors['mass_2'] = bilby.core.prior.Uniform(name='mass_2', minimum=m2*0.75, maximum=m2*1.25)
 
-    priors['a_1'] = bilby.core.prior.Uniform(0.0, 1, 'a_1')
-    priors['a_2'] = bilby.core.prior.Uniform(0.0, 1, 'a_2')
+    priors['a_1'] = bilby.core.prior.Uniform(0, 1, 'a_1')
+    priors['a_2'] = bilby.core.prior.Uniform(0, 1, 'a_2')
 
     #priors['chi_eff'] = bilby.core.prior.Uniform(0, 0.9, 'chi_eff')
+    #priors['eccentricity'] = bilby.core.prior.Uniform(name='eccentricity', minimum=0, maximum=1)
 
 elif source == "BNS":
     # Neutron Star Binary prior setup
@@ -250,7 +269,7 @@ elif source == "BNS":
     priors.pop("symmetric_mass_ratio")
     priors.pop("total_mass")
     priors['chirp_mass'] = bilby.core.prior.Uniform(name='chirp_mass', minimum=mc*0.95, maximum=mc*1.05)
-    priors['mass_ratio'] = bilby.core.prior.Uniform(name='mass_ratio', minimum=0.5, maximum=1)
+    priors['mass_ratio'] = bilby.core.prior.Uniform(name='mass_ratio', minimum=0.3, maximum=1)
     
     #priors.pop('chirp_mass')
     #priors.pop('mass_ratio')
@@ -287,10 +306,10 @@ elif source == "NSBH":
     priors.pop("symmetric_mass_ratio")
     priors.pop("total_mass")
     priors['chirp_mass'] = bilby.core.prior.Uniform(name='chirp_mass', minimum=mc*0.95, maximum=mc*1.05)
-    priors['mass_ratio'] = bilby.core.prior.Uniform(name='mass_ratio', minimum=0.01, maximum=0.5)
+    priors['mass_ratio'] = bilby.core.prior.Uniform(name='mass_ratio', minimum=0.01, maximum=1)
     
-    priors['chi_1'] = bilby.core.prior.Uniform(-1, 1, 'chi_1')
-    priors['chi_2'] = bilby.core.prior.Uniform(-0.1, 0.1, 'chi_2')
+    priors['chi_1'] = bilby.core.prior.Uniform(0, 1, 'chi_1')
+    priors['chi_2'] = bilby.core.prior.Uniform(0, 0.1, 'chi_2')
     
     #priors['chi_eff'] = bilby.core.prior.Uniform(0, 0.9, 'chi_eff')
     #priors['chi_p'] = bilby.core.prior.Uniform(0, 0.9, 'chi_p')
@@ -299,7 +318,7 @@ else:
 
 
 # Perform a check that the prior does not extend to a parameter space longer than the data
-#priors.validate_prior(duration, args.f_min)
+priors.validate_prior(duration, args.f_min)
 
 
 # Compute the appropriate likelihoods based on the source type
@@ -383,7 +402,7 @@ result = bilby.core.sampler.run_sampler(
     npoints = 2000,
     walks = 100,
     maxmcmc = 500,
-    npool = 64,
+    npool = 60,
     nact = 10,
     injection_parameters=injection_parameters,
     outdir=outdir,
